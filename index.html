@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://unpkg.com/konva@8.1.3/konva.min.js"></script>
+	  <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <meta charset="utf-8" />
+    <title>Vens Piano</title>
+    <style>
+	body {
+	  margin: 0;
+	  padding: 0;
+	  overflow: hidden;
+	  background-color: #f0f0f0;
+	}
+    </style>
+  </head>
+  <body>
+	<div id="container2"></div>
+	<div id="container"></div>
+    <script>
+
+	const app = {};
+
+	var vexHeight = 280;
+	var width = window.innerWidth;
+	var height = window.innerHeight-vexHeight;
+	var margin = 20;
+	
+	var genKey = function(notes, x, y, w, h){
+		var kt = notes[0];
+		if(kt=='A2' || kt=='c5'){
+			//Begin and End keys
+		}else{
+			kt = kt.toUpperCase();
+			kt = kt.replace(/\d/g, '');
+		}
+		var points = [];
+		var color = '#FFFFFF';
+		var bw = (w*0.6);
+		var bh = (h/5*3);
+		if(kt=='C'){
+			var dx = (1.5*w-1.5*bw);
+			points = [
+				x, 		y,
+				x+dx, 	y,
+				x+dx, 	y+bh,
+				x+w, 	y+bh,
+				x+w,	y+h,
+				x,		y+h
+			];
+		}else if(kt=='D'){
+			var dx = bw;
+			var dx2 = (w-dx)/2;
+			points = [
+				x, 				y,
+				x+dx, 			y,
+				x+dx, 			y+bh,
+				x+dx+dx2, 		y+bh,
+				x+dx+dx2, 		y+h,
+				x-(w-dx-dx2), 	y+h,
+				x-(w-dx-dx2), 	y+bh,
+				x,	 			y+bh
+			];
+		}else if(kt=='E'){
+			var dx = (1.5*w-1.5*bw);
+			points = [
+				x, 		y,
+				x+dx, 	y,
+				x+dx, 	y+h,
+				x+dx-w,	y+h,
+				x+dx-w, y+bh,
+				x, 		y+bh
+			];
+		}else if(kt=='F'){
+			var dx = (2*w-2.5*bw);
+			points = [
+				x, 		y,
+				x+dx, 	y,
+				x+dx, 	y+bh,
+				x+w, 	y+bh,
+				x+w,	y+h,
+				x,		y+h
+			];
+		}else if(kt=='G'){
+			var dx = bw;
+			var dx2 = bw/2;
+			points = [
+				x, 				y,
+				x+dx, 			y,
+				x+dx, 			y+bh,
+				x+dx+dx2, 		y+bh,
+				x+dx+dx2, 		y+h,
+				x-(w-dx-dx2), 	y+h,
+				x-(w-dx-dx2), 	y+bh,
+				x,	 			y+bh
+			];
+		}else if(kt=='A'){
+			var dx = bw;
+			var dx2 = w-1.5*bw;
+			points = [
+				x, 				y,
+				x+dx, 			y,
+				x+dx, 			y+bh,
+				x+dx+dx2, 		y+bh,
+				x+dx+dx2, 		y+h,
+				x-(w-dx-dx2), 	y+h,
+				x-(w-dx-dx2), 	y+bh,
+				x,	 			y+bh
+			];
+		}else if(kt=='B'){
+			var dx = (2*w-2.5*bw);
+			points = [
+				x, 		y,
+				x+dx, 	y,
+				x+dx, 	y+h,
+				x+dx-w,	y+h,
+				x+dx-w, y+bh,
+				x, 		y+bh
+			];
+		}else if(kt=='C#' || kt=='D#' || kt=='F#' || kt=='G#' || kt=='A#'){
+			points = [
+				x, 		y,
+				x+bw, 	y,
+				x+bw, 	y+bh,
+				x,		y+bh
+			];
+			color = '#000000';
+		}else if(kt=='A2'){
+			var dx = 1.5*bw;
+			var dx2 = w-1.5*bw;
+			points = [
+				x, 				y,
+				x+dx, 			y,
+				x+dx, 			y+bh,
+				x+dx+dx2, 		y+bh,
+				x+dx+dx2, 		y+h,
+				x-(w-dx-dx2), 	y+h,
+				x-(w-dx-dx2), 	y+bh,
+				x,	 			y+bh
+			];
+		}else if(kt=='c5'){
+			points = [
+				x, 				y,
+				x+w, 			y,
+				x+w, 			y+h,
+				x,	 			y+h
+			];
+		}
+		var oneKey = new Konva.Line(
+			{
+				points: points,
+				fill: color,
+				stroke: 'black',
+				strokeWidth: 1,
+				closed: true
+			}
+		);
+		
+		oneKey.alignX = points[2];
+		oneKey.name = notes[0];
+		oneKey.notes = notes;
+		oneKey.oriFill = color;
+		oneKey.on('mousedown touchstart', function () {
+			this.fill('gray');
+			this.isDown = true;
+			tapStart(this);
+		});
+		oneKey.on('mouseup touchend', function () {
+			this.fill(this.oriFill);
+			this.isDown = false;
+			tapEnd(this);
+		});
+		oneKey.on('mouseout', function () {
+			if(this.isDown){
+				this.fill(this.oriFill);
+				this.isDown = false;
+				tapEnd(this);
+			}
+		});
+
+		return oneKey;
+	};
+
+	var genKeyboard = function(keyList, keyX, keyY, keyW, keyH, layer){
+		for(var i=0; i<keyList.length; i++){
+			var ki = keyList[i];
+			var k = genKey(ki.notes, keyX, keyY, keyW, keyH);
+			keyX = k.alignX;
+			layer.add(k);
+
+			if(ki.notes[0].indexOf('#')==-1){
+				var n = new Konva.Text({
+					x: keyX-keyW/10,
+					y: keyY+keyW/10,
+					text: ki.notes[0],
+					fontSize: keyW/4,
+					fontFamily: 'Calibri',
+					fill: 'gray'
+				});
+				var nw = n.width();
+				n.x(n.x()-nw);
+				layer.add(n);
+				//
+				var n2 = new Konva.Text({
+					x: keyX-keyW/10,
+					y: keyY+keyH - keyW/3,
+					text: getDoremi(ki.notes[0]),
+					fontSize: keyW/4,
+					fontFamily: 'Calibri',
+					fill: 'gray'
+				});
+				var nw2 = n2.width();
+				n2.x(n2.x()-nw2);
+				layer.add(n2);
+			}
+
+		}
+	};
+
+	var getDoremi = function(name){
+		var un = name.toUpperCase();
+		if     (un.indexOf('C')>=0) return 'do';
+		else if(un.indexOf('D')>=0) return 'ri'; 
+		else if(un.indexOf('E')>=0) return 'mi'; 
+		else if(un.indexOf('F')>=0) return 'fa'; 
+		else if(un.indexOf('G')>=0) return 'sol'; 
+		else if(un.indexOf('A')>=0) return 'la'; 
+		else if(un.indexOf('B')>=0) return 'si'; 
+		else return '';
+	};
+
+	var leftKeys = [
+		{notes: ['A2',	'']},	
+		{notes: ['A2#',	'']},	
+		{notes: ['B2',	'']},
+		
+		{notes: ['C1',	'']},	
+		{notes: ['C1#',	'']},	
+		{notes: ['D1',	'']},	
+		{notes: ['D1#',	'']},	
+		{notes: ['E1',	'']},	
+		{notes: ['F1',	'']},	
+		{notes: ['F1#',	'']},	
+		{notes: ['G1',	'']},	
+		{notes: ['G1#',	'']},	
+		{notes: ['A1',	'']},	
+		{notes: ['A1#',	'']},	
+		{notes: ['B1',	'']},	
+
+		{notes: ['C',	'']},	
+		{notes: ['C#',	'']},	
+		{notes: ['D',	'']},	
+		{notes: ['D#',	'']},	
+		{notes: ['E',	'']},	
+		{notes: ['F',	'']},	
+		{notes: ['F#',	'']},	
+		{notes: ['G',	'']},	
+		{notes: ['G#',	'']},	
+		{notes: ['A',	'']},	
+		{notes: ['A#',	'']},	
+		{notes: ['B',	'']},	
+
+		{notes: ['c',	'']},	
+		{notes: ['c#',	'']},	
+		{notes: ['d',	'']},	
+		{notes: ['d#',	'']},	
+		{notes: ['e',	'']},	
+		{notes: ['f',	'']},	
+		{notes: ['f#',	'']},	
+		{notes: ['g',	'']},	
+		{notes: ['g#',	'']},	
+		{notes: ['a',	'']},	
+		{notes: ['a#',	'']},	
+		{notes: ['b',	'']}
+	];
+
+	var rightKeys = [
+		{notes: ['c1',	'']},	
+		{notes: ['c1#',	'']},	
+		{notes: ['d1',	'']},	
+		{notes: ['d1#',	'']},	
+		{notes: ['e1',	'']},	
+		{notes: ['f1',	'']},	
+		{notes: ['f1#',	'']},	
+		{notes: ['g1',	'']},	
+		{notes: ['g1#',	'']},	
+		{notes: ['a1',	'']},	
+		{notes: ['a1#',	'']},	
+		{notes: ['b1',	'']},
+
+		{notes: ['c2',	'']},	
+		{notes: ['c2#',	'']},	
+		{notes: ['d2',	'']},	
+		{notes: ['d2#',	'']},	
+		{notes: ['e2',	'']},	
+		{notes: ['f2',	'']},	
+		{notes: ['f2#',	'']},	
+		{notes: ['g2',	'']},	
+		{notes: ['g2#',	'']},	
+		{notes: ['a2',	'']},	
+		{notes: ['a2#',	'']},	
+		{notes: ['b2',	'']},
+
+		{notes: ['c3',	'']},	
+		{notes: ['c3#',	'']},	
+		{notes: ['d3',	'']},	
+		{notes: ['d3#',	'']},	
+		{notes: ['e3',	'']},	
+		{notes: ['f3',	'']},	
+		{notes: ['f3#',	'']},	
+		{notes: ['g3',	'']},	
+		{notes: ['g3#',	'']},	
+		{notes: ['a3',	'']},	
+		{notes: ['a3#',	'']},	
+		{notes: ['b3',	'']},
+
+		{notes: ['c4',	'']},	
+		{notes: ['c4#',	'']},	
+		{notes: ['d4',	'']},	
+		{notes: ['d4#',	'']},	
+		{notes: ['e4',	'']},	
+		{notes: ['f4',	'']},	
+		{notes: ['f4#',	'']},	
+		{notes: ['g4',	'']},	
+		{notes: ['g4#',	'']},	
+		{notes: ['a4',	'']},	
+		{notes: ['a4#',	'']},	
+		{notes: ['b4',	'']},	
+
+		{notes: ['c5',	'']}
+	];
+	
+	var stage = new Konva.Stage({
+	  container: 'container',
+	  width: width,
+	  height: height,
+	});
+
+	var layer = new Konva.Layer();
+	
+	var keyW = width/32;
+	var keyH = keyW*4;
+
+	var keyX = margin;
+	var keyY = height-2*keyH-2*margin;
+
+	genKeyboard(leftKeys, keyX, keyY, keyW, keyH, layer);
+
+	keyX = width-29*keyW-margin;
+	keyY = height-keyH-margin;
+	genKeyboard(rightKeys, keyX, keyY, keyW, keyH, layer);
+
+	app.timeBar = new Konva.Text({
+		x: margin,
+		y: margin,
+		text: ' ',
+		fontSize: width/80,
+		fontFamily: 'Calibri',
+		fill: 'black'
+	}); 
+	layer.add(app.timeBar);
+
+	app.countBar = new Konva.Text({
+		x: margin+width/2,
+		y: margin,
+		text: ' ',
+		fontSize: width/40,
+		fontFamily: 'Calibri',
+		fill: 'black'
+	}); 
+	layer.add(app.countBar);
+
+	var sepLine = new Konva.Line({
+        points: [margin, 0, width-margin, 0],
+        stroke: 'black',
+        strokeWidth: 2,
+        lineCap: 'round',
+        lineJoin: 'round',
+      });
+	layer.add(sepLine);
+
+	stage.add(layer);
+
+
+	//VexFlow
+
+	var createVexContext = function(divId, w, h){
+		var wsi = {
+			div: document.getElementById(divId),
+			canvasWidth: w, canvasHeight: h
+		};
+		var renderer = new Vex.Flow.Renderer(
+			wsi.div, Vex.Flow.Renderer.Backends.SVG
+		);
+		renderer.resize(wsi.canvasWidth, wsi.canvasHeight);
+		var context = renderer.getContext();
+		context.setFont("Arial", 10, "").setBackgroundFillStyle("#eed");
+		return context;
+	};
+
+	var context = createVexContext("container2", window.innerWidth, vexHeight);
+	
+	app.noteBase = {
+		treble: [
+			['g/3', 'up',   'g'],
+			['a/3', 'up',   'a'],
+			['b/3', 'up',   'b'],
+			['c/4', 'up',   'c1'],
+			['d/4', 'up',   'd1'],
+			['e/4', 'up',   'e1'],
+			['f/4', 'up',   'f1'],
+			['g/4', 'up',   'g1'],
+			['a/4', 'up',   'a1'],
+			['b/4', 'down', 'b1'],
+			['c/5', 'down', 'c2'],
+			['d/5', 'down', 'd2'],
+			['e/5', 'down', 'e2'],
+			['f/5', 'down', 'f2'],
+			['g/5', 'down', 'g2'],
+			['a/5', 'down', 'a2'],
+			['b/5', 'down', 'b2'],
+			['c/6', 'down', 'c3'],
+			['d/6', 'down', 'd3'],
+			['e/6', 'down', 'e3'],
+			['f/6', 'down', 'f3'],
+			['g/6', 'down', 'g3'],
+			['a/6', 'down', 'a3']
+		],
+		bass: [
+		//	['c/1', 'up',   'C1'],
+		//	['d/1', 'up',   'D1'],
+		//	['e/1', 'up',   'E1'],
+		//	['f/1', 'up',   'F1'],
+		//	['g/1', 'up',   'G1'],
+		//	['a/1', 'up',   'A1'],
+		//	['b/1', 'up',   'B1'],
+			['c/2', 'up',   'C'],
+			['d/2', 'up',   'D'],
+			['e/2', 'up',   'E'],
+			['f/2', 'up',   'F'],
+			['g/2', 'up',   'G'],
+			['a/2', 'up',   'A'],
+			['b/2', 'up',   'B'],
+			['c/3', 'up',   'c'],
+			['d/3', 'down', 'd'],
+			['e/3', 'down', 'e'],
+			['f/3', 'down', 'f'],
+			['g/3', 'down', 'g'],
+			['a/3', 'down', 'a'],
+			['b/3', 'down', 'b'],
+			['c/4', 'down', 'c1'],
+			['d/4', 'down', 'd1'],
+			['e/4', 'down', 'e1'],
+			['f/4', 'down', 'f1']
+		]
+	};
+
+	var randomNote = function(clef, nb){
+		var note = null;
+		while(note==null){
+			var ni = null;
+			if(clef=='treble'){
+				var ri = Math.floor(Math.random()*nb.treble.length);
+				ni = nb.treble[ri];
+			}else if(clef=='bass'){
+				var ri = Math.floor(Math.random()*nb.bass.length);
+				ni = nb.bass[ri];
+			}
+			console.log('ni', ni);
+			if(ni!=null){
+				var key = ni[0];
+				if(app.lastRandomNoteKey!=key){
+					var stem = ni[1]=='up'?1:-1;
+					note = new Vex.Flow.StaveNote({ clef: clef, keys: [key], duration: 'q', stem_direction: stem});
+					note.myNoteInfo = ni;
+					app.lastRandomNoteKey = key;
+				}
+			}
+		}
+		return note;
+	};
+
+	var getNote = function(clef, nb, keyName){
+		var note = null;
+		var theNb = null;
+		if(clef=='treble'){
+			theNb = nb.treble
+		}else if(clef=='bass'){
+			theNb = nb.bass;
+		}
+		if(theNb!=null){
+			for(var i=0; i<theNb.length; i++){
+				var ni = theNb[i];
+				var key = ni[0];
+				var kn = ni[2];
+				if(keyName==kn){
+					var stem = ni[1]=='up'?1:-1;
+					note = new Vex.Flow.StaveNote({ clef: clef, keys: [key], duration: 'q', stem_direction: stem});
+					note.myNoteInfo = ni;
+					break;
+				}
+			}
+		}
+		return note;
+	};
+
+	var genNote = function(key, clef, stem){
+		stem = stem>0?1:-1;
+		var note = new Vex.Flow.StaveNote({ clef: clef, keys: [key], duration: 'q', stem_direction: stem});
+		return note;
+	};
+
+	var genRestNote = function(){
+		var note = new Vex.Flow.StaveNote({ clef: 'treble', keys: ['c/5'], duration: 'qr'});
+		var color = 'gray';
+		note.setStyle({fillStyle: color, strokeStyle: color});
+		return note;
+	};
+
+	var colorNote = function(note, color){
+		note.setStyle({fillStyle: color, strokeStyle: color});
+		return note;
+	};
+
+	var createNotes = function(qty){
+		if(qty>0){
+			var x = Math.random();
+			var notes = {
+				list: [],
+				clef: x>0.5?'bass':'treble',
+				idx: -1,
+				failIdx: -1
+			};
+			for(var i=1; i<qty; i++){
+				notes.list[i] = genRestNote();
+			}
+			randomNextNote(notes);
+			return notes;
+		}else{
+			console.log('createNotes() failed: qty should be greater than 1.');
+		}
+	};
+
+	var randomNextNote = function(notes){
+		if(notes.list.length>0){
+			if(notes.idx>=0){
+				if(notes.failIdx==notes.idx){
+					colorNote(notes.list[notes.idx], 'gray');
+				}else{
+					colorNote(notes.list[notes.idx], 'blue');
+				}
+			}
+			if(notes.list.length>notes.idx+1){
+				notes.list[++notes.idx] = randomNote(notes.clef, app.noteBase);
+			}else{
+				console.log('try to create new notes');
+				var newNotes = createNotes(notes.list.length);
+				notes.clef = newNotes.clef;
+				notes.idx = newNotes.idx;
+				notes.failIdx = newNotes.failIdx;
+				for(var i=0; i<notes.list.length; i++){
+					notes.list[i] = newNotes.list[i]
+				}
+			}
+		}
+	};
+
+	var showPressedNote = function(notes, pressed){
+		if(notes.list.length>0 && notes.idx>=0 && notes.idx<=notes.list.length-1){
+			var pn = getNote(notes.clef, app.noteBase, pressed);
+			if(pn!=null){
+				notes.oriNote = notes.list[notes.idx];
+				notes.list[notes.idx] = pn;
+				colorNote(pn, 'red');
+			}
+		}
+	};
+
+	var hidePressedNote = function(notes){
+		if(notes.list.length>0 && notes.idx>=0 && notes.idx<=notes.list.length-1){
+			if(notes.oriNote!=null){
+				notes.list[notes.idx] = notes.oriNote;
+				notes.oriNote = null;
+			}
+		}
+	};
+
+	var clearContext = function(context){
+		while(context.svg.lastChild){
+			context.svg.removeChild(context.svg.lastChild);
+		}
+	};
+
+	var drawNotes = function(context, notes, x, y, w){
+		clearContext(context);
+		var stave = new Vex.Flow.Stave(x, y, w);
+		stave.addClef(notes.clef);
+		stave.setContext(context).draw();
+		var voice = new Vex.Flow.Voice({num_beats: notes.list.length, beat_value: 4});
+		voice.addTickables(notes.list);
+		var formatter = new Vex.Flow.Formatter();
+		formatter.joinVoices([voice]).formatToStave([voice], stave);
+		voice.draw(context, stave);
+	};
+
+	app.context = context;
+	app.margin = margin;
+	app.width = width;
+	app.lastRandomNoteKey = null;
+	app.noteQty = 25;
+	app.notes = createNotes(app.noteQty);
+	
+	app.total = 0;
+	app.pass = 0;
+	app.start = new Date().getTime();
+
+	var display = function(){
+		drawNotes(app.context, app.notes, app.margin, 70, app.width-2*app.margin);
+		app.timeBar.text(new Date()+'');
+		var spent = Math.round((new Date().getTime()-app.start)/1000);
+		var rate = Math.round(app.pass/app.total*100);
+		app.countBar.text(app.pass +' / ' + app.total + '  '+rate+'%' + '  ('+spent+'s)');
+		app.countBar.x(app.width-app.countBar.width()-app.margin);
+	};
+
+	display();
+
+	var tapStart = function(key){
+		console.log('tapStart', key.name);
+		var idx = app.notes.idx;
+		var note = app.notes.list[idx];
+		var noteInfo = note.myNoteInfo;
+
+		//console.log('noteInfo', noteInfo);
+
+		if(key.name==noteInfo[2]){
+			app.readyForNext = true;
+			colorNote(note, 'blue');
+			display();			
+		}else{
+			app.notes.failIdx = idx;
+			showPressedNote(app.notes, key.name);
+			display();
+		}
+	};
+
+	var tapEnd = function(key){
+		console.log('tapEnd', key.name);
+
+		hidePressedNote(app.notes);
+
+		if(app.readyForNext){
+			if(app.notes.failIdx!=app.notes.idx){
+				app.pass++;
+			}
+			app.total++;
+			randomNextNote(app.notes);		
+			app.readyForNext = false;	
+		}
+		display();
+	};
+		
+    </script>
+  </body>
+</html>
